@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Paramount VX Prototype</title>
+<script>if(/[?&]embed(=|&|$)/.test(location.search))document.documentElement.classList.add('embed')</script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap">
@@ -51,6 +52,11 @@ img{display:block}
 .switcher button{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;color:var(--east-bay);transition:color .15s}
 .switcher button:hover{color:var(--muted)}
 .switcher button[aria-current="true"]{color:var(--white)}
+
+/* Embed mode (?embed): for dropping the prototype into another page as an iframe. Transparent page background, no screen-switcher tabs, no padding — just the stage, so it can sit seamlessly inside the host page. */
+html.embed,html.embed body{background:transparent}
+html.embed .switcher{display:none}
+html.embed .shell{padding:0;gap:0}
 
 /* ---------- scene (background world, pans on drag) ---------- */
 .scene{position:absolute;inset:0;overflow:hidden;cursor:grab}
@@ -611,7 +617,8 @@ img{display:block}
     const shell = $('.shell');
     const cs = getComputedStyle(shell);
     const availW = shell.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-    const availH = shell.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - $('.switcher').offsetHeight - 10;
+    const switcherH = $('.switcher').offsetHeight; // 0 when hidden (embed mode)
+    const availH = shell.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (switcherH ? switcherH + 10 : 0);
     const s = Math.min(1, availW / 1920, availH / 1080);
     stage.style.transform = `scale(${s})`;
     viewport.style.width = 1920 * s + 'px';
