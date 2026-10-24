@@ -30,6 +30,7 @@ body{margin:0}
   --inactive:#3d53b2;
   --line-300:#6d77a1;
   --line-100:#ced2e0;
+  --online:#39e75f;
   --page:#03070f;
   --font:"Montserrat",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
   color-scheme:dark;
@@ -260,26 +261,37 @@ html.embed .shell{padding:0;gap:0}
 .forgot:hover{color:var(--blue-ribbon)}
 .form-hint{height:14px;margin-top:-34px;font-size:11px;font-weight:600;color:#ff8a96}
 
-/* Chat */
-.chat{left:1532px;top:531px;width:348px;height:448px;border-radius:16px;padding:22px 23px;display:flex;flex-direction:column;align-items:center;gap:22px;transform-origin:bottom right}
-.chat__top{display:flex;align-items:center;justify-content:space-between;width:295px}
-.chat__room{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;line-height:16px;text-transform:uppercase}
-.chat__room img{width:8.53px;height:14.47px}
-.chat__room:hover{color:var(--blue-ribbon)}
+/* Chat (panel with three views: thread, chats list, add people) */
+.chat{left:1532px;top:531px;width:348px;height:448px;border-radius:16px;padding:22px 23px;display:flex;flex-direction:column;transform-origin:bottom right}
+.chat__view{display:flex;flex-direction:column;align-items:center;gap:20px;flex:1;min-height:0}
+.chat__view[hidden]{display:none!important}
+.chat__top{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;flex:none}
+.chat__back{display:flex;align-items:center;gap:10px;min-width:0;font-size:12px;font-weight:700;line-height:16px;text-transform:uppercase;text-align:left}
+.chat__back img{width:8.53px;height:14.47px;flex:none}
+.chat__back span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat__back:hover{color:var(--blue-ribbon)}
+.chat__tools{display:flex;align-items:center;gap:16px;flex:none}
 .chat .close-btn{width:18px;height:18px}
-.chat__messages{width:301px;height:262px;padding-right:6px;overflow-y:auto;display:flex;flex-direction:column;gap:22px;scrollbar-width:thin;scrollbar-color:var(--east-bay) transparent;flex:none}
-.msg{display:flex;flex-direction:column;gap:5px;width:295px;flex:none}
-.msg__meta{display:flex;justify-content:space-between;align-items:center}
+.icon-plus{display:block;width:18px;height:18px}
+.icon-plus svg{display:block;width:18px;height:18px}
+.icon-plus:hover{filter:drop-shadow(0 0 4px rgba(0,100,255,.9))}
+.scroll-y{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--east-bay) transparent}
+.scroll-y::-webkit-scrollbar{width:4px;height:0}
+.scroll-y::-webkit-scrollbar-thumb{background:var(--east-bay);border-radius:4px}
+.chat__messages{width:100%;flex:1;min-height:0;display:flex;flex-direction:column;gap:22px;padding-right:4px}
+.msg{display:flex;flex-direction:column;gap:5px;width:100%;flex:none;min-width:0}
+.msg__meta{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .msg__name{font-size:12px;font-weight:900;text-transform:uppercase;line-height:16px}
-.msg__when{font-size:10px;font-weight:700;line-height:16px}
-.msg__bubble{padding:19px 26px;font-size:12px;line-height:16px;background:var(--msg-surface);border-radius:0 10px 10px 10px;word-wrap:break-word}
+.msg__when{font-size:10px;font-weight:700;line-height:16px;flex:none}
+.msg__bubble{padding:19px 26px;font-size:12px;line-height:16px;background:var(--msg-surface);border-radius:0 10px 10px 10px;overflow-wrap:anywhere}
 .msg--out .msg__name{color:var(--blue-ribbon)}
 .msg--out .msg__bubble{background:var(--blue-ribbon);border-radius:10px 0 10px 10px}
+.msg--system{align-self:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:center}
 .msg--typing .msg__bubble{display:flex;gap:5px;width:84px}
 .msg--typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1s infinite}
 .msg--typing i:nth-child(2){animation-delay:.15s}.msg--typing i:nth-child(3){animation-delay:.3s}
 @keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
-.chat__write{width:303px;display:flex;flex-direction:column;gap:6px;flex:none}
+.chat__write{width:100%;display:flex;flex-direction:column;gap:6px;flex:none}
 .chat__write form{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;height:22px}
 .chat__write input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:12px;line-height:16px;color:var(--white)}
 .chat__write input::placeholder{color:var(--placeholder)}
@@ -290,7 +302,39 @@ html.embed .shell{padding:0;gap:0}
 .chat__actions{display:flex;gap:16px;flex:none}
 .chat__actions button{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:900;text-transform:uppercase;line-height:16px}
 .chat__actions img{width:46px;height:36px;transition:filter .15s}
-.chat__actions button:hover img{filter:brightness(1.3)}
+.chat__actions button:hover img,.chat__actions button[aria-current="true"] img{filter:brightness(1.3)}
+
+/* Chats list */
+.threads{width:100%;flex:1;min-height:0;display:flex;flex-direction:column}
+.thread{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;width:100%;padding:16px;border-bottom:1px solid rgba(68,85,124,.45);text-align:left;transition:background .15s}
+.thread:hover{background:var(--msg-surface)}
+.thread__name{display:flex;align-items:center;gap:8px;min-width:0;font-size:13px;font-weight:700;line-height:16px}
+.thread__name span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thread__time{font-size:9px;font-weight:700;color:var(--muted);text-align:right;white-space:nowrap}
+.thread__preview{font-size:11px;line-height:15px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thread.is-unread .thread__preview{color:var(--label)}
+.thread__badge-slot{display:flex;justify-content:flex-end;min-height:16px}
+.online-dot{width:7px;height:7px;border-radius:50%;background:var(--online);flex:none}
+.badge{min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--blue-ribbon);color:var(--white);font-size:9px;font-weight:800;line-height:16px;text-align:center;font-variant-numeric:tabular-nums}
+.badge--menu{position:absolute;right:-10px;top:-9px;box-shadow:0 0 0 2px var(--blue-charcoal);pointer-events:none}
+.badge[hidden]{display:none!important}
+
+/* Add to chat */
+.people{width:100%;flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;padding:4px 0}
+.person{display:flex;align-items:center;gap:16px;width:100%;padding:10px 16px;border-radius:6px;text-align:left}
+.person:hover{background:var(--msg-surface)}
+.checkbox{flex:none;width:16px;height:16px;border:2px solid var(--white);border-radius:2px;display:flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s}
+.checkbox svg{width:10px;height:10px;opacity:0}
+.person[aria-checked="true"] .checkbox{background:var(--blue-ribbon);border-color:var(--blue-ribbon)}
+.person[aria-checked="true"] .checkbox svg{opacity:1}
+.person__text{display:flex;flex-direction:column;gap:3px;min-width:0}
+.person__name{font-size:13px;font-weight:700;line-height:16px}
+.person__status{font-size:9px;font-weight:700;color:var(--online)}
+.person__status.is-away{color:var(--muted)}
+.people__empty{font-size:12px;line-height:16px;color:var(--muted);text-align:center;padding:40px 16px}
+.btn-solid{width:100%;height:42px;border-radius:4px;background:var(--blue-ribbon);color:var(--white);font-size:12px;font-weight:900;text-transform:uppercase;flex:none;transition:background .15s,color .15s}
+.btn-solid:hover{background:#2b7dff}
+.btn-solid:disabled{background:var(--madison);color:var(--east-bay);cursor:not-allowed}
 
 /* Emoji set */
 .emoji-set{position:absolute;left:1812px;top:720px;width:68px;height:273px;background:var(--blue-charcoal);border-radius:8px;padding:8px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transform-origin:bottom center}
@@ -425,7 +469,7 @@ html.embed .shell{padding:0;gap:0}
       <div class="menu-bar screen-only s-bronson s-lobby s-theater flex" data-component="menu-comms">
         <button class="toggle t-mic" id="t-mic" aria-pressed="false" aria-label="Microphone" data-on="assets/mic-on.svg" data-off="assets/mic-off.svg"><img src="assets/mic-off.svg" alt=""></button>
         <button class="toggle t-video screen-only s-theater" id="t-video" aria-pressed="false" aria-label="Camera" data-on="assets/video-on.svg" data-off="assets/video-off.svg"><img src="assets/video-off.svg" alt=""></button>
-        <button class="toggle t-chat screen-only s-bronson s-lobby" id="t-chat" aria-pressed="false" aria-label="Chat" data-on="assets/chat-on.svg" data-off="assets/chat-off.svg"><img src="assets/chat-off.svg" alt=""></button>
+        <button class="toggle t-chat screen-only s-bronson s-lobby" id="t-chat" aria-pressed="false" aria-label="Chat" data-on="assets/chat-on.svg" data-off="assets/chat-off.svg"><img src="assets/chat-off.svg" alt=""><span class="badge badge--menu" id="chat-badge" hidden></span></button>
         <button class="toggle t-emoji" id="t-emoji" aria-pressed="false" aria-label="Reactions" data-on="assets/emoji-on.svg" data-off="assets/emoji-off.svg"><img src="assets/emoji-off.svg" alt=""></button>
       </div>
 
@@ -544,16 +588,39 @@ html.embed .shell{padding:0;gap:0}
       </section>
 
       <section class="panel chat" id="p-chat" data-component="panel-chat" aria-label="Chat" hidden>
-        <div class="chat__top">
-          <button class="chat__room" id="chat-room" aria-label="Switch room"><img src="assets/arrow-prev.svg" alt=""><span id="chat-room-name">CHAT GROUP XYZ</span></button>
-          <button class="close-btn" data-close="chat" aria-label="Close chat"><img src="assets/close.svg" alt=""></button>
+        <!-- View: conversation -->
+        <div class="chat__view" data-view="thread">
+          <div class="chat__top">
+            <button class="chat__back" id="chat-back" aria-label="All chats"><img src="assets/arrow-prev.svg" alt=""><span id="chat-title">Adria Vossen</span></button>
+            <div class="chat__tools">
+              <button class="icon-plus" id="chat-add" aria-label="Add people to this chat"><svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 0.5V17.5M0.5 9H17.5" stroke="white" stroke-width="1.6"/></svg></button>
+              <button class="close-btn" data-close="chat" aria-label="Close chat"><img src="assets/close.svg" alt=""></button>
+            </div>
+          </div>
+          <div class="chat__messages scroll-y" id="chat-list" aria-live="polite"></div>
+          <div class="chat__write">
+            <form id="chat-form"><input id="chat-input" placeholder="WRITE A MESSAGE" autocomplete="off" aria-label="Write a message"><button type="submit">SEND</button></form>
+            <div class="rule"></div>
+          </div>
         </div>
-        <div class="chat__messages" id="chat-list" aria-live="polite"></div>
-        <div class="chat__write">
-          <form id="chat-form"><input id="chat-input" placeholder="WRITE A MESSAGE" autocomplete="off" aria-label="Write a message"><button type="submit">SEND</button></form>
-          <div class="rule"></div>
+        <!-- View: chats list -->
+        <div class="chat__view" data-view="list" hidden>
+          <div class="chat__top">
+            <button class="chat__back" id="list-back" aria-label="Back to conversation"><img src="assets/arrow-prev.svg" alt=""><span>Chats</span></button>
+            <button class="close-btn" data-close="chat" aria-label="Close chat"><img src="assets/close.svg" alt=""></button>
+          </div>
+          <div class="threads scroll-y" id="thread-list" data-component="chat-list"></div>
         </div>
-        <div class="chat__actions">
+        <!-- View: add people -->
+        <div class="chat__view" data-view="add" hidden>
+          <div class="chat__top">
+            <button class="chat__back" id="add-back" aria-label="Back to conversation"><img src="assets/arrow-prev.svg" alt=""><span>Add to chat</span></button>
+            <button class="close-btn" data-close="chat" aria-label="Close chat"><img src="assets/close.svg" alt=""></button>
+          </div>
+          <div class="people scroll-y" id="people-list" role="group" aria-label="People you can add" data-component="add-to-chat"></div>
+          <button class="btn-solid" id="add-confirm" disabled data-component="button-solid">Add</button>
+        </div>
+        <div class="chat__actions" id="chat-actions">
           <button id="chat-goto"><img src="assets/icon-goto.svg" alt="">Go to</button>
           <button id="chat-chat"><img src="assets/icon-chat.svg" alt="">Chat</button>
           <button id="chat-call"><img src="assets/icon-call.svg" alt="">Call</button>
@@ -668,6 +735,7 @@ html.embed .shell{padding:0;gap:0}
     if (p.btn) setToggle(p.btn, true);
     if (k === 'qa') $('#btn-qa').hidden = true;
     if (k === 'env') markEnv();
+    if (k === 'chat' && !$('#p-chat [data-view="thread"]').hidden) renderThread();
   }
   function close(k) {
     const p = panels[k]; if (p.el.hidden) return;
@@ -904,54 +972,154 @@ html.embed .shell{padding:0;gap:0}
     $('#hd-file-name').textContent = ''; $('#hd-attach .badge')?.remove();
   };
 
-  /* ---------- Chat ---------- */
-  const rooms = {
-    'CHAT GROUP XYZ': [
-      { who: 'You', when: '6 minutes', text: 'Has anyone found the photo spot yet?', out: true },
-      { who: 'Adria Vossen', when: '5 minutes', text: 'It’s in the lobby, right next to Rumble. Look for the camera icon.' },
-      { who: 'Marius Ciocirlan', when: '4 minutes', text: 'Grab a picture before the show starts, the line gets long.' },
-      { who: 'You', when: '3 minutes', text: 'On my way over now.', out: true },
-      { who: 'Adria Vossen', when: '2 minutes', text: 'See you in the theater for the Q&A after!' },
-    ],
-    'EVERYONE': [
-      { who: 'Host', when: '12 minutes', text: 'Welcome to the Paramount Virtual Showcase! The screening starts when the countdown hits zero.' },
-      { who: 'Jordan Ellis', when: '7 minutes', text: 'Bronson Plaza looks incredible at this time of day.' },
-      { who: 'Priya Raman', when: '3 minutes', text: 'Does anyone know if the cast is joining the Q&A live?' },
-    ],
+  /* ---------- Chat: threads, unread counts, add people ---------- */
+  const CHECK = '<svg viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5 5.2L4 7.5L8.5 2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const people = {
+    adria:  { name: 'Adria Vossen', online: true },
+    marcus: { name: 'Marcus Chen', online: true },
+    sarah:  { name: 'Sarah Johnson', online: false },
+    marius: { name: 'Marius Ciocirlan', online: true },
+    jordan: { name: 'Jordan Ellis', online: false },
+    priya:  { name: 'Priya Raman', online: true },
+    dev:    { name: 'Dev Team', online: false, group: true },
   };
-  let room = 'CHAT GROUP XYZ';
+  const threads = [
+    { id: 'adria', members: ['adria'], unread: 2, messages: [
+      { from: 'adria', when: '15 minutes', text: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu.' },
+      { from: 'me', when: '6 minutes', text: 'Duis aute irure dolor.' },
+      { from: 'adria', when: '13 minutes', text: 'Has anyone found the photo spot yet? I heard it’s next to Rumble.' },
+      { from: 'adria', when: '13 minutes', text: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu.' },
+    ] },
+    { id: 'marcus', members: ['marcus'], unread: 0, messages: [
+      { from: 'marcus', when: '1 hour', text: 'Are you joining the Q&A after the screening?' },
+      { from: 'me', when: '1 hour', text: 'Definitely. I have a question for the director.' },
+      { from: 'marcus', when: '1 hour', text: 'See you at the meeting!' },
+    ] },
+    { id: 'sarah', members: ['sarah'], unread: 1, messages: [
+      { from: 'me', when: '2 hours', text: 'The lobby photo spot is live now.' },
+      { from: 'sarah', when: '2 hours', text: 'Thanks for the update' },
+    ] },
+    { id: 'dev', members: ['dev'], unread: 0, messages: [
+      { from: 'dev', name: 'Jordan Ellis', when: '3 hours', text: 'Sprint planning at 3pm' },
+    ] },
+  ];
+  let current = threads[0];
+  const firstName = id => people[id].name.split(' ')[0];
+  const titleOf = t => t.members.length === 1 ? people[t.members[0]].name
+    : t.members.slice(0, 2).map(firstName).join(', ') + (t.members.length > 2 ? ` +${t.members.length - 2}` : '');
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const shortWhen = w => w.replace(' minutes', ' min').replace(' minute', ' min').replace(' hours', ' hours');
+
   function msgHTML(m) {
-    return `<div class="msg ${m.out ? 'msg--out' : ''}" data-component="${m.out ? 'message-outgoing' : 'message-incoming'}">
-      <div class="msg__meta"><span class="msg__name">${esc(m.out ? 'You' : m.who)}</span><span class="msg__when">${esc(m.when)}</span></div>
+    if (m.system) return `<div class="msg--system">${esc(m.text)}</div>`;
+    const out = m.from === 'me';
+    const name = out ? 'You' : (m.name || people[m.from].name);
+    return `<div class="msg ${out ? 'msg--out' : ''}" data-component="${out ? 'message-outgoing' : 'message-incoming'}">
+      <div class="msg__meta"><span class="msg__name">${esc(name)}</span><span class="msg__when">${esc(m.when)}</span></div>
       <div class="msg__bubble">${esc(m.text)}</div></div>`;
   }
-  function renderChat() {
-    $('#chat-room-name').textContent = room;
-    const list = $('#chat-list'); list.innerHTML = rooms[room].map(msgHTML).join('');
-    list.scrollTop = list.scrollHeight;
+  function chatView(v) {
+    $$('#p-chat [data-view]').forEach(el => el.hidden = el.dataset.view !== v);
+    $('#chat-actions').hidden = v === 'add';
+    $('#chat-chat').setAttribute('aria-current', String(v === 'list'));
+    if (v === 'list') renderThreads();
+    if (v === 'add') renderPeople();
   }
-  renderChat();
-  $('#chat-room').onclick = () => { room = room === 'EVERYONE' ? 'CHAT GROUP XYZ' : 'EVERYONE'; renderChat(); };
-  $('#chat-chat').onclick = $('#chat-room').onclick;
+  function totalUnread() { return threads.reduce((n, t) => n + t.unread, 0); }
+  function syncBadge() {
+    const n = totalUnread(), b = $('#chat-badge');
+    b.hidden = n === 0; b.textContent = n > 9 ? '9+' : n;
+    $('#t-chat').setAttribute('aria-label', n ? `Chat, ${n} unread` : 'Chat');
+  }
+  function renderThread() {
+    current.unread = 0;
+    $('#chat-title').textContent = titleOf(current);
+    const list = $('#chat-list'); list.innerHTML = current.messages.map(msgHTML).join('');
+    list.scrollTop = list.scrollHeight;
+    syncBadge();
+  }
+  function renderThreads() {
+    $('#thread-list').innerHTML = threads.map(t => {
+      const last = t.messages[t.messages.length - 1];
+      const online = t.members.length === 1 && people[t.members[0]].online;
+      const preview = last.from === 'me' ? `You: ${last.text}` : last.text;
+      return `<button class="thread ${t.unread ? 'is-unread' : ''}" data-thread="${t.id}">
+        <span class="thread__name"><span>${esc(titleOf(t))}</span>${online ? '<i class="online-dot" aria-label="Online"></i>' : ''}</span>
+        <span class="thread__time">${esc(shortWhen(last.when))}</span>
+        <span class="thread__preview">${esc(preview)}</span>
+        <span class="thread__badge-slot">${t.unread ? `<span class="badge" aria-label="${t.unread} unread">${t.unread}</span>` : ''}</span>
+      </button>`;
+    }).join('');
+    $$('#thread-list [data-thread]').forEach(b => b.onclick = () => {
+      current = threads.find(t => t.id === b.dataset.thread); chatView('thread'); renderThread();
+    });
+  }
+  function renderPeople() {
+    const avail = Object.keys(people).filter(id => !current.members.includes(id));
+    const box = $('#people-list');
+    box.innerHTML = avail.length ? avail.map(id => `<button class="person" role="checkbox" aria-checked="false" data-person="${id}">
+        <span class="checkbox">${CHECK}</span>
+        <span class="person__text"><span class="person__name">${esc(people[id].name)}</span>
+        ${people[id].group ? '<span class="person__status is-away">Group</span>' : people[id].online ? '<span class="person__status">Online</span>' : '<span class="person__status is-away">Away</span>'}</span>
+      </button>`).join('') : '<p class="people__empty">Everyone you know is already in this chat.</p>';
+    const btn = $('#add-confirm');
+    const sync = () => { const n = $$('.person[aria-checked="true"]', box).length; btn.disabled = !n; btn.textContent = n ? `Add ${n}` : 'Add'; };
+    $$('.person', box).forEach(p => p.onclick = () => { p.setAttribute('aria-checked', String(p.getAttribute('aria-checked') !== 'true')); sync(); });
+    sync();
+  }
+  $('#add-confirm').onclick = () => {
+    const ids = $$('#people-list .person[aria-checked="true"]').map(p => p.dataset.person);
+    if (!ids.length) return;
+    current.members.push(...ids);
+    current.messages.push({ system: true, text: `${ids.map(firstName).join(', ')} ${ids.length > 1 ? 'were' : 'was'} added to the chat` });
+    chatView('thread'); renderThread();
+    toast(`Added ${ids.map(id => people[id].name).join(', ')}`);
+  };
+  $('#chat-add').onclick = () => chatView('add');
+  $('#chat-back').onclick = () => chatView('list');
+  $('#list-back').onclick = () => { chatView('thread'); renderThread(); };
+  $('#add-back').onclick = () => { chatView('thread'); renderThread(); };
+  $('#chat-chat').onclick = () => { if ($('#p-chat [data-view="list"]').hidden) chatView('list'); else { chatView('thread'); renderThread(); } };
   $('#chat-goto').onclick = () => { close('chat'); open('env'); };
-  $('#chat-call').onclick = () => toast(room === 'EVERYONE' ? 'Calling the host desk…' : 'Calling Chat Group XYZ…');
+  $('#chat-call').onclick = () => toast(`Calling ${titleOf(current)}…`);
+
   const replies = ['Love that!', 'Same here, can’t wait for the screening.', 'Ha, agreed.', 'See you at the Q&A!', 'Good call.'];
   $('#chat-form').addEventListener('submit', e => {
     e.preventDefault();
     const v = $('#chat-input').value.trim(); if (!v) return;
-    rooms[room].push({ who: 'You', when: 'Just now', text: v, out: true });
-    $('#chat-input').value = ''; renderChat();
-    const list = $('#chat-list');
+    const t = current;
+    t.messages.push({ from: 'me', when: 'Just now', text: v });
+    $('#chat-input').value = ''; renderThread();
+    const responder = t.members.find(id => !people[id].group) || t.members[0];
     setTimeout(() => {
-      list.insertAdjacentHTML('beforeend', `<div class="msg msg--typing"><div class="msg__meta"><span class="msg__name">Adria Vossen</span><span class="msg__when">typing</span></div><div class="msg__bubble"><i></i><i></i><i></i></div></div>`);
+      if (t !== current || $('#p-chat').hidden) return;
+      const list = $('#chat-list');
+      list.insertAdjacentHTML('beforeend', `<div class="msg msg--typing"><div class="msg__meta"><span class="msg__name">${esc(people[responder].name)}</span><span class="msg__when">typing</span></div><div class="msg__bubble"><i></i><i></i><i></i></div></div>`);
       list.scrollTop = list.scrollHeight;
     }, 500);
     setTimeout(() => {
-      rooms[room].push({ who: room === 'EVERYONE' ? 'Jordan Ellis' : 'Adria Vossen', when: 'Just now', text: replies[Math.floor(Math.random() * replies.length)] });
-      renderChat();
+      t.messages.push({ from: responder, when: 'Just now', text: replies[Math.floor(Math.random() * replies.length)] });
+      if (t === current && !$('#p-chat').hidden && !$('#p-chat [data-view="thread"]').hidden) renderThread();
+      else { t.unread++; syncBadge(); if (!$('#p-chat [data-view="list"]').hidden) renderThreads(); }
     }, 1900);
   });
+
+  // New messages arrive in other chats now and then, so unread counts change while you explore.
+  const incoming = [
+    ['marcus', 'Saving you a seat in row C.'], ['sarah', 'Did you get the photo with Rumble?'],
+    ['adria', 'The countdown is almost done!'], ['dev', 'Deck for tomorrow is in the shared folder.'],
+  ];
+  let inc = 0;
+  setInterval(() => {
+    if (state.screen === 'onboarding') return;
+    const [id, text] = incoming[inc++ % incoming.length];
+    const t = threads.find(x => x.id === id);
+    const viewing = t === current && !$('#p-chat').hidden && !$('#p-chat [data-view="thread"]').hidden;
+    t.messages.push({ from: id, name: id === 'dev' ? 'Priya Raman' : undefined, when: 'Just now', text });
+    if (viewing) renderThread(); else { t.unread++; syncBadge(); if (!$('#p-chat [data-view="list"]').hidden) renderThreads(); }
+  }, 30000);
+
+  renderThread(); threads[0].unread = 2; syncBadge();
 
   /* ---------- Lobby: hotspot + digital takeaway ---------- */
   $('#hotspot').onclick = () => {
