@@ -619,12 +619,20 @@ html.embed .shell{padding:0;gap:0}
     const availW = shell.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     const switcherH = $('.switcher').offsetHeight; // 0 when hidden (embed mode)
     const availH = shell.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (switcherH ? switcherH + 10 : 0);
-    const s = Math.min(1, availW / 1920, availH / 1080);
+    // Standalone: never larger than 1920×1080. Embedded: fill the frame at any size.
+    const maxScale = document.documentElement.classList.contains('embed') ? Infinity : 1;
+    const s = Math.min(maxScale, availW / 1920, availH / 1080);
     stage.style.transform = `scale(${s})`;
     viewport.style.width = 1920 * s + 'px';
     viewport.style.height = 1080 * s + 'px';
   }
   window.addEventListener('resize', fit); fit();
+  // Embedded in an iframe, the frame can be resized without a window resize
+  // event reaching us in time (e.g. the host page re-laying itself out) —
+  // refit whenever our own viewport actually changes size.
+  if (document.documentElement.classList.contains('embed') && 'ResizeObserver' in window) {
+    new ResizeObserver(fit).observe(document.documentElement);
+  }
 
   /* ---------- toast / flash ---------- */
   let toastT;
