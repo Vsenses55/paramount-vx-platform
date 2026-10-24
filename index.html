@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paramount VX Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap">
+<style>
+[hidden]{display:none!important}
+body{margin:0}
+
+/* Layout: one fixed 1920×1080 stage (the Figma frame size), scaled down proportionally to fit; a slim screen switcher sits under it. */
+:root{
+  /* Paramount VX tokens, taken from the Figma variables */
+  --blue-charcoal:#00091c;
+  --blue-charcoal-95:rgba(0,9,28,.95);
+  --header:#010715;
+  --icon-bg:#0d1424;
+  --madison:#0b1c62;
+  --east-bay:#44557c;
+  --blue-ribbon:#0064ff;
+  --msg-surface:rgba(0,100,255,.1);
+  --white:#ffffff;
+  --label:#dedede;
+  --muted:#8893ad;
+  --placeholder:#435172;
+  --inactive:#3d53b2;
+  --line-300:#6d77a1;
+  --line-100:#ced2e0;
+  --page:#03070f;
+  --font:"Montserrat",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--page);color:var(--white);font-family:var(--font);overflow:hidden}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--blue-ribbon);outline-offset:3px;border-radius:4px}
+img{display:block}
+
+/* ---------- shell ---------- */
+.shell{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
+.viewport{position:relative;flex:0 0 auto}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:var(--blue-charcoal);
+  user-select:none;-webkit-user-select:none}
+.switcher{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;align-items:center}
+.switcher button{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;color:var(--east-bay);transition:color .15s}
+.switcher button:hover{color:var(--muted)}
+.switcher button[aria-current="true"]{color:var(--white)}
+
+/* ---------- scene (background world, pans on drag) ---------- */
+.scene{position:absolute;inset:0;overflow:hidden;cursor:grab}
+.scene.dragging{cursor:grabbing}
+.scene-world{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:50% 50%;will-change:transform;transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+.scene.dragging .scene-world{transition:none}
+.scene-world>img.bg{width:1920px;height:1080px;object-fit:cover;pointer-events:none}
+.onb-bg{position:absolute;inset:0;background:var(--madison)}
+.onb-bg img{width:100%;height:100%;object-fit:cover;opacity:.1}
+
+.abs{position:absolute}
+#stage .screen-only{display:none}
+#stage[data-screen="onboarding"] .s-onboarding,
+#stage[data-screen="bronson"] .s-bronson,
+#stage[data-screen="lobby"] .s-lobby,
+#stage[data-screen="theater"] .s-theater{display:block}
+#stage[data-screen="onboarding"] .onboarding,
+#stage[data-screen="bronson"] .s-bronson.flex,#stage[data-screen="lobby"] .s-lobby.flex,#stage[data-screen="theater"] .s-theater.flex{display:flex}
+
+/* ---------- Logo / Countdown ---------- */
+.logo{left:40px;top:40px;width:80px;height:54.955px}
+.countdown{left:50%;top:38px;transform:translateX(-50%);width:98px;text-align:center}
+.countdown__label{font-size:10px;font-weight:700;line-height:12px;white-space:nowrap}
+.countdown__time{display:flex;justify-content:center;align-items:center;gap:6px;font-size:22px;font-weight:700;line-height:27px;font-variant-numeric:tabular-nums;margin-top:-2px}
+.countdown__colon{display:flex;flex-direction:column;gap:3px}
+.countdown__colon i{width:4px;height:4px;border-radius:50%;background:var(--white)}
+
+/* ---------- Icon buttons (Settings, Help Desk, Help, Environments, QA) ---------- */
+.icon-btn{position:absolute;transition:transform .15s}
+.icon-btn img{width:100%;height:100%}
+.icon-btn:hover{transform:translateY(-1px)}
+.icon-btn:active{transform:translateY(0) scale(.96)}
+.btn-settings{left:1720px;top:38px;width:45px;height:37px}
+.btn-helpdesk{left:1775px;top:38px;width:45px;height:37px}
+.btn-help{left:40px;top:1006px;width:45px;height:36px}
+.btn-env{left:92px;top:1006px;width:45px;height:36px}
+.btn-qa{left:1837px;top:38px;width:45px;height:37px;background:var(--icon-bg);border-radius:16px;font-size:16px;font-weight:900;color:var(--white)}
+.btn-qa:hover{color:var(--blue-ribbon)}
+.profile{left:1830px;top:32px;width:56px;height:50px;border-radius:36px;background:var(--white);overflow:hidden}
+.profile img{position:absolute;left:50%;bottom:-.15px;width:28.33px;height:41.155px;transform:translateX(-50%)}
+
+/* ---------- Comms menu bar (mic / video / chat / emoji) ---------- */
+.menu-bar{position:absolute;right:40px;top:1010px;height:48px;background:var(--blue-charcoal);border-radius:20px;padding:12px 20px;gap:20px;align-items:center}
+.menu-bar .toggle{position:relative}
+.menu-bar .toggle img{width:100%;height:100%}
+.t-mic{width:16px;height:24px}
+.t-video{width:23.65px;height:23.61px}
+.t-chat{width:21.965px;height:19px}
+.t-emoji{width:18px;height:18px}
+.menu-bar .toggle:hover{filter:brightness(1.35)}
+
+/* ---------- Direction Controller ---------- */
+.dc{left:900px;top:902px;width:120px;height:120px;border-radius:30px;cursor:pointer;touch-action:none}
+.dc img{position:absolute;inset:0;width:120px;height:120px;pointer-events:none}
+.dc .dc-press{opacity:0}
+.dc.is-pressed .dc-press{opacity:1}
+.dc.is-pressed .dc-default{opacity:0}
+
+/* ---------- Tool tip ---------- */
+.tooltip{left:884px;top:449px;width:152px;height:182.5px;pointer-events:none;transition:opacity .5s, transform .5s}
+.tooltip.is-hidden{opacity:0;transform:scale(.94)}
+.tooltip .ring{position:absolute;left:9px;top:.5px;width:134px;height:134px}
+.tooltip .hand{position:absolute;left:53px;top:45.5px;width:39.93px;height:45.07px;animation:swipe 2.4s ease-in-out infinite}
+.tooltip p{position:absolute;left:0;right:0;top:152.5px;margin:0;font-size:12px;font-weight:500;line-height:15px;text-align:center}
+@keyframes swipe{0%,100%{transform:translateX(0)}30%{transform:translateX(-10px)}70%{transform:translateX(10px)}}
+
+
+/* ---------- Hotspot (lives in scene) ---------- */
+.hotspot{position:absolute;left:804px;top:393px;width:42px;height:42px;border-radius:50%}
+.hotspot img{position:absolute;inset:0;width:42px;height:42px;transition:opacity .15s}
+.hotspot .hs-hover,.hotspot .hs-selected{opacity:0}
+.hotspot:hover .hs-hover{opacity:1}
+.hotspot.is-selected .hs-selected{opacity:1}
+.hotspot.is-selected .hs-hover{opacity:0}
+.hotspot::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(255,255,255,.55);animation:pulse 2s ease-out infinite;pointer-events:none}
+.hotspot.is-selected::after{display:none}
+@keyframes pulse{0%{transform:scale(.8);opacity:1}100%{transform:scale(1.5);opacity:0}}
+
+.takeaway{position:absolute;left:1039px;top:435px;width:92px;height:92px;border-radius:50%;transition:transform .2s}
+.takeaway img{position:absolute;inset:15px;width:62px;height:62px}
+.takeaway:hover{transform:scale(1.08)}
+
+/* ---------- Panels (shared surface) ---------- */
+.panel{position:absolute;background:var(--blue-charcoal-95);border-radius:8px;overflow:hidden;
+  transform-origin:top right;transition:opacity .18s ease, transform .18s ease}
+.panel[hidden]{display:none!important}
+.panel.enter{opacity:0;transform:translateY(-6px) scale(.98)}
+.close-btn{display:block;flex:none}
+.close-btn img{width:100%;height:100%}
+.close-btn:hover{filter:drop-shadow(0 0 4px rgba(0,100,255,.9))}
+
+/* Environments panel */
+.env-panel{left:40px;top:851px;width:134px;height:144px;padding:33px 34px;display:flex;flex-direction:column;gap:20px;transform-origin:bottom left}
+.menu-item{font-size:12px;font-weight:700;line-height:15px;text-align:left;color:var(--white);text-transform:uppercase;letter-spacing:.01em}
+.menu-item:hover,.menu-item[aria-current="true"]{color:var(--blue-ribbon)}
+
+/* Controls overview */
+.controls{left:40px;top:695px;width:300px;height:300px;transform-origin:bottom left}
+.controls__header{height:41px;background:var(--blue-charcoal);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--label);letter-spacing:.02em}
+.controls__slide{position:absolute;left:0;right:0;top:41px;bottom:40px;text-align:center;transition:opacity .25s}
+.controls__slide[hidden]{display:block!important;opacity:0;pointer-events:none}
+.controls__slide h3{margin:12px 0 0;font-size:20px;font-weight:700;line-height:24px}
+.controls__slide p{margin:8px auto 0;width:232px;font-size:12px;font-weight:500;line-height:15px;color:var(--muted)}
+.controls__gfx{position:absolute;left:77.75px;top:100px;width:145px;height:95px}
+.controls__gfx img{width:100%;height:100%;object-fit:contain}
+.controls__gfx.hand img{width:64px;height:73px;margin:11px auto 0}
+.dots{position:absolute;left:50%;top:267px;transform:translateX(-50%);display:flex;gap:10px}
+.dots button{width:10px;height:10px;border-radius:50%;background:var(--east-bay)}
+.dots button[aria-current="true"]{background:var(--blue-ribbon)}
+
+/* Settings & camera panel */
+.settings{left:1465px;top:82px;width:300px;padding-bottom:20px}
+.settings__header{height:41px;background:var(--header);display:flex;align-items:center;justify-content:space-between;padding:0 16px 0 27px}
+.tabs{display:flex;gap:16px}
+.tab{font-size:12px;font-weight:900;text-transform:uppercase;color:var(--east-bay);line-height:16px}
+.tab:hover{color:var(--muted)}
+.tab[aria-selected="true"]{color:var(--white)}
+.settings .close-btn{width:16.1px;height:16.1px}
+.settings__body{display:flex;flex-direction:column;align-items:center;gap:20px;padding-top:20px}
+.row{display:flex;align-items:center;justify-content:space-between;width:249px}
+.row__label{font-size:12px;font-weight:600;color:var(--label);text-transform:uppercase}
+.seg{display:flex;gap:4px;align-items:center;justify-content:center;width:126px;height:26px;background:var(--madison);border-radius:2px}
+.seg button{height:18px;border-radius:2px;font-size:10px;font-weight:700;color:var(--inactive);background:var(--blue-charcoal);transition:background .15s,color .15s}
+.seg--quality button{width:36px}
+.seg--persp button{width:56px;font-weight:600;background:var(--header)}
+.seg button:hover{color:var(--white)}
+.seg button[aria-checked="true"]{background:var(--blue-ribbon);color:var(--white)}
+.dropdown{position:relative;width:250px}
+.dropdown__btn{display:flex;align-items:center;justify-content:space-between;width:241.5px;font-size:12px;font-weight:700;text-transform:uppercase;line-height:16px;text-align:left}
+.dropdown__btn img{width:15px;height:7.656px;transition:transform .2s}
+.dropdown__btn[aria-expanded="true"] img{transform:scaleY(-1)}
+.dropdown__btn small{display:block;font-size:10px;font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0}
+.dropdown__rule{height:.5px;background:var(--east-bay);margin-top:12px}
+.dropdown__list{position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:5;background:var(--header);border:1px solid rgba(68,85,124,.5);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.dropdown__list[hidden]{display:none!important}
+.links{display:flex;gap:15px;font-size:10px;font-weight:600}
+.links a{color:var(--muted)}
+.links a:hover{color:var(--white)}
+.cam{display:flex;flex-direction:column;gap:17px;width:250px}
+.cam__subject{position:relative;width:193px;height:114.6px;background:var(--madison);border-radius:2px;overflow:hidden}
+.cam__subject img{position:absolute;left:61px;top:10.25px;width:71.85px;height:104.38px}
+.cam__subject .live{position:absolute;right:8px;top:8px;font-size:9px;font-weight:800;letter-spacing:.1em;padding:2px 6px;border-radius:2px;background:var(--blue-charcoal);color:var(--muted)}
+.cam__subject.is-live .live{background:var(--blue-ribbon);color:var(--white)}
+.cam__subject:not(.is-live) img{opacity:.35}
+.levels{display:flex;gap:10px;height:20px}
+.levels i{width:10px;height:20px;border-radius:1px;background:var(--madison);transition:background .08s}
+.levels i.on{background:var(--blue-ribbon)}
+
+/* Help desk */
+.helpdesk{left:1520px;top:82px;width:300px;height:400px;padding:0 24px 24px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.helpdesk__header{position:relative;height:51px;margin:0 -24px;align-self:stretch;background:var(--blue-charcoal);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:16px}
+.helpdesk__header .close-btn{position:absolute;right:20px;top:50%;width:18px;height:18px;transform:translateY(-50%)}
+.field{width:250px;height:163px;padding:14px 0;flex:none}
+.field textarea{width:100%;height:100%;resize:none;border:0;border-radius:8px;background:var(--msg-surface);padding:20px 16px;font-size:12px;line-height:16px;color:var(--white);outline:none;transition:background .15s}
+.field textarea::placeholder{color:var(--placeholder)}
+.field textarea:focus{background:var(--madison)}
+.actions{display:flex;justify-content:space-between;align-items:center;width:250px}
+.btn-attach{position:relative;width:50px;height:50px;border-radius:39px;background:var(--blue-ribbon);display:flex;align-items:center;justify-content:center;flex:none}
+.btn-attach img{width:10.67px;height:21.41px}
+.btn-attach:hover{filter:brightness(1.15)}
+.btn-attach .badge{position:absolute;right:-2px;top:-2px;width:16px;height:16px;border-radius:50%;background:var(--white);color:var(--blue-ribbon);font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center}
+.attach-name{width:250px;font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:12px;margin-top:-2px}
+.sent{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;flex:1;text-align:center}
+.sent h4{margin:0;font-size:16px;font-weight:800;text-transform:uppercase}
+.sent p{margin:0;font-size:12px;line-height:16px;color:var(--muted);max-width:220px}
+
+/* Buttons */
+.btn-outline{display:flex;align-items:center;justify-content:center;height:50px;border:1px solid var(--white);border-radius:100px;font-size:12px;font-weight:900;text-transform:uppercase;line-height:16px;color:var(--white);transition:border-color .15s,color .15s}
+.btn-outline:hover,.btn-outline.is-hover{border-color:var(--blue-ribbon);color:var(--blue-ribbon)}
+.btn-outline:disabled{opacity:.4;cursor:not-allowed;border-color:var(--white);color:var(--white)}
+.btn-white{display:flex;align-items:center;justify-content:space-between;width:250px;height:50px;padding:10px 10px 10px 24px;border-radius:100px;background:var(--white);color:var(--blue-ribbon);font-size:16px;font-weight:700;text-transform:uppercase;transition:background .18s,color .18s}
+.btn-white img{width:32px;height:32px;transition:transform .2s}
+.btn-white:hover{background:var(--blue-ribbon);color:var(--white)}
+.btn-white:hover img{transform:translateX(3px)}
+
+/* Form entry */
+.form-entry{position:relative;display:flex;flex-direction:column;justify-content:flex-end;width:250px;height:40px;padding-bottom:8px;border-bottom:1px solid var(--line-300);cursor:text;transition:border-color .15s}
+.form-entry:hover{border-bottom-color:var(--line-100)}
+.form-entry__label{display:flex;align-items:center;gap:4px;padding-left:4px;font-size:12px;line-height:16px;color:var(--white);pointer-events:none;transition:transform .18s,color .18s,font-weight .18s}
+.form-entry__label::before{content:"";width:1px;height:13px;background:var(--white)}
+.form-entry__label span{opacity:.4;transition:opacity .15s}
+.form-entry:hover .form-entry__label span{opacity:1}
+.form-entry input{position:absolute;left:4px;right:4px;bottom:8px;height:16px;border:0;background:transparent;outline:none;font-size:12px;font-weight:700;color:var(--white);opacity:0}
+.form-entry.is-active{border-bottom-color:var(--line-100);padding-bottom:12px}
+.form-entry.is-active .form-entry__label{transform:translateY(-16px);color:var(--blue-ribbon);font-weight:700}
+.form-entry.is-active .form-entry__label::before{display:none}
+.form-entry.is-active .form-entry__label span{opacity:1}
+.form-entry.is-active input{opacity:1;bottom:10px}
+.form-entry.is-error{border-bottom-color:#ff5a6a}
+.form-entry.is-error .form-entry__label span{color:#ff8a96;opacity:1}
+
+/* Onboarding */
+.onboarding{left:524px;top:239px;width:873px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:24px;text-align:center}
+.onboarding .brand{width:219px;height:178px;display:flex;justify-content:center}
+.onboarding .brand img{width:219.5px;height:150.8px}
+.onboarding h1{margin:0;width:667px;font-size:28px;font-weight:800;line-height:28px;text-transform:uppercase;text-wrap:balance}
+.onboarding .intro{margin:0;width:853px;font-size:16px;line-height:28px}
+.onboarding form{display:flex;flex-direction:column;align-items:center;gap:48px;margin:0}
+.onboarding .entries{display:flex;gap:24px}
+.forgot{font-size:12px;font-weight:700;line-height:16px;text-transform:uppercase}
+.forgot:hover{color:var(--blue-ribbon)}
+.form-hint{height:14px;margin-top:-34px;font-size:11px;font-weight:600;color:#ff8a96}
+
+/* Chat */
+.chat{left:1532px;top:531px;width:348px;height:448px;border-radius:16px;padding:22px 23px;display:flex;flex-direction:column;align-items:center;gap:22px;transform-origin:bottom right}
+.chat__top{display:flex;align-items:center;justify-content:space-between;width:295px}
+.chat__room{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;line-height:16px;text-transform:uppercase}
+.chat__room img{width:8.53px;height:14.47px}
+.chat__room:hover{color:var(--blue-ribbon)}
+.chat .close-btn{width:18px;height:18px}
+.chat__messages{width:301px;height:262px;padding-right:6px;overflow-y:auto;display:flex;flex-direction:column;gap:22px;scrollbar-width:thin;scrollbar-color:var(--east-bay) transparent;flex:none}
+.msg{display:flex;flex-direction:column;gap:5px;width:295px;flex:none}
+.msg__meta{display:flex;justify-content:space-between;align-items:center}
+.msg__name{font-size:12px;font-weight:900;text-transform:uppercase;line-height:16px}
+.msg__when{font-size:10px;font-weight:700;line-height:16px}
+.msg__bubble{padding:19px 26px;font-size:12px;line-height:16px;background:var(--msg-surface);border-radius:0 10px 10px 10px;word-wrap:break-word}
+.msg--out .msg__name{color:var(--blue-ribbon)}
+.msg--out .msg__bubble{background:var(--blue-ribbon);border-radius:10px 0 10px 10px}
+.msg--typing .msg__bubble{display:flex;gap:5px;width:84px}
+.msg--typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1s infinite}
+.msg--typing i:nth-child(2){animation-delay:.15s}.msg--typing i:nth-child(3){animation-delay:.3s}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+.chat__write{width:303px;display:flex;flex-direction:column;gap:6px;flex:none}
+.chat__write form{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;height:22px}
+.chat__write input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:12px;line-height:16px;color:var(--white)}
+.chat__write input::placeholder{color:var(--placeholder)}
+.chat__write button{font-size:12px;font-weight:700;color:var(--blue-ribbon)}
+.chat__write button:hover{color:var(--white)}
+.chat__write .rule{height:1px;background:var(--placeholder)}
+.chat__write:focus-within .rule{background:var(--blue-ribbon)}
+.chat__actions{display:flex;gap:16px;flex:none}
+.chat__actions button{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:900;text-transform:uppercase;line-height:16px}
+.chat__actions img{width:46px;height:36px;transition:filter .15s}
+.chat__actions button:hover img{filter:brightness(1.3)}
+
+/* Emoji set */
+.emoji-set{position:absolute;left:1812px;top:720px;width:68px;height:273px;background:var(--blue-charcoal);border-radius:8px;padding:8px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transform-origin:bottom center}
+.emoji-set button{display:flex;align-items:center;justify-content:center;width:30px;height:24px;transition:transform .15s}
+.emoji-set button:hover{transform:scale(1.25)}
+.emoji-set button img{max-width:26px;max-height:22px}
+.floater{position:absolute;pointer-events:none;width:30px;height:30px;animation:float 2.2s cubic-bezier(.2,.6,.3,1) forwards;z-index:40}
+.floater img{width:100%;height:100%;object-fit:contain}
+@keyframes float{0%{transform:translate(0,0) scale(.6);opacity:0}12%{opacity:1;transform:translate(0,-20px) scale(1.15)}100%{transform:translate(var(--dx),-340px) scale(1);opacity:0}}
+
+/* Q&A */
+.qa{left:1530px;top:44px;width:350px;padding:26px 23px;display:flex;flex-direction:column;gap:16px}
+.qa__header{display:flex;justify-content:space-between;align-items:center;width:300px}
+.qa__header h2{margin:0;font-size:16px;font-weight:700}
+.qa .close-btn{width:20.2px;height:20.2px}
+.qa-entry{width:295.6px;height:88.8px;border-radius:8px 0 8px 8px;background:var(--madison);transition:background .15s}
+.qa-entry:focus-within{background:var(--blue-ribbon)}
+.qa-entry textarea{width:100%;height:100%;border:0;background:transparent;resize:none;outline:none;padding:16px 21px;font-size:12px;line-height:16px;color:var(--white)}
+.qa-entry textarea::placeholder{color:var(--white)}
+.qa-entry:focus-within textarea::placeholder{color:transparent}
+.opt{display:flex;gap:10px;align-items:flex-start;text-align:left;font-size:12px;font-weight:500;line-height:15px;color:var(--muted);max-width:260px}
+.opt__dot{flex:none;width:18px;height:18px;border-radius:50%;border:1px solid var(--muted);display:flex;align-items:center;justify-content:center;transition:border-color .15s}
+.opt__dot::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--blue-ribbon);transform:scale(0);transition:transform .15s}
+.opt:hover{color:var(--white)}
+.opt:hover .opt__dot{border-color:var(--white)}
+.opt[aria-checked="true"]{color:var(--white)}
+.opt[aria-checked="true"] .opt__dot{border-color:var(--blue-ribbon)}
+.opt[aria-checked="true"] .opt__dot::after{transform:scale(1)}
+.qa .btn-outline{width:296px}
+.legal{margin:0;padding:20px 0;width:295.6px;font-size:9px;font-weight:500;line-height:19px;color:var(--muted)}
+.legal a{color:var(--muted)}
+.qa-sent{width:295.6px;padding:14px 16px;border-radius:8px;background:var(--msg-surface);font-size:12px;line-height:16px}
+.qa-sent b{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;color:var(--blue-ribbon);margin-bottom:4px;text-transform:uppercase}
+
+/* Prompt */
+.prompt{left:194px;top:249px;width:475px;padding:32px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;transform-origin:center}
+.prompt h2{margin:0;font-size:22px;font-weight:800;line-height:24px;color:#e7eaed;text-transform:uppercase}
+.prompt p{margin:8px 0 0;width:329px;min-height:54px;font-size:12px;line-height:16px;color:var(--muted)}
+.prompt .actions-row{display:flex;gap:11px}
+.prompt .btn-outline{width:200px}
+.prompt .close-btn{position:absolute;left:441.7px;top:15px;width:19.6px;height:20.2px}
+.prompt.centered{left:722px;top:420px}
+
+/* Toast & flash & fade */
+.toast{position:absolute;left:50%;top:104px;transform:translate(-50%,-8px);background:var(--blue-charcoal-95);border:1px solid rgba(68,85,124,.6);border-radius:100px;padding:10px 20px;font-size:12px;font-weight:700;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;z-index:60}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:70}
+.flash.go{animation:flash .6s ease-out}
+@keyframes flash{0%{opacity:.9}100%{opacity:0}}
+.fade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:80;transition:opacity .35s}
+.fade.on{opacity:1}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="viewport" id="viewport">
+    <div id="stage" data-screen="onboarding" role="application" aria-label="Paramount VX virtual event prototype">
+
+      <!-- ===== Onboarding ===== -->
+      <div class="onb-bg screen-only s-onboarding"><img src="assets/bg-bronson.jpg" alt=""></div>
+      <section class="abs onboarding screen-only s-onboarding flexcol" aria-label="Sign in">
+        <div class="brand"><img src="assets/logo.svg" alt="Paramount"></div>
+        <h1>Please sign-in below here is the</h1>
+        <p class="intro">Welcome to the Paramount Pictures Virtual Showcase Experience featuring “Rumble”! Here you’ll be able to socialize with the group, engage in Q&amp;A with the cast, and enjoy an exclusive sneak peak at our upcoming film. First things first, let’s get your account set up.</p>
+        <form id="signin" novalidate>
+          <div class="entries">
+            <label class="form-entry" data-component="form-entry">
+              <span class="form-entry__label"><span>USERNAME</span></span>
+              <input id="f-user" name="username" autocomplete="username" aria-label="Username">
+            </label>
+            <label class="form-entry" data-component="form-entry">
+              <span class="form-entry__label"><span>EMAIL ADDRESS</span></span>
+              <input id="f-email" name="email" type="email" autocomplete="email" aria-label="Email address">
+            </label>
+          </div>
+          <div class="form-hint" id="signin-hint" aria-live="polite"></div>
+          <button type="submit" class="btn-white" data-component="button-white"><span>Enter here</span><img src="assets/btn-arrow.svg" alt=""></button>
+        </form>
+        <button class="forgot" id="forgot" type="button">Forgot password?</button>
+      </section>
+
+      <!-- ===== Scene (Bronson / Lobby / Theater) ===== -->
+      <div class="scene" id="scene" hidden>
+        <div class="scene-world" id="world">
+          <img class="bg screen-only s-bronson" src="assets/bg-bronson.jpg" alt="Bronson Plaza environment">
+          <img class="bg screen-only s-lobby" src="assets/bg-lobby.jpg" alt="Lobby rotunda with Rumble">
+          <img class="bg screen-only s-theater" src="assets/bg-theater.jpg" alt="Theater with live cast Q&amp;A on screen">
+          <button class="hotspot screen-only s-lobby" id="hotspot" data-component="button-hotspot" aria-label="Meet Rumble">
+            <img class="hs-default" src="assets/hotspot-default.svg" alt="">
+            <img class="hs-hover" src="assets/hotspot-hover.svg" alt="">
+            <img class="hs-selected" src="assets/hotspot-selected.svg" alt="">
+          </button>
+          <button class="takeaway screen-only s-lobby" id="takeaway" data-component="digital-takeaway" aria-label="Take a photo"><img src="assets/takeaway.svg" alt=""></button>
+        </div>
+      </div>
+
+      <div class="abs tooltip screen-only s-bronson" id="tooltip" data-component="guide" aria-hidden="true">
+        <img class="ring" src="assets/tip-ring.svg" alt="">
+        <img class="hand" src="assets/tip-hand.svg" alt="">
+        <p>Click and drag anywhere<br>to look around.</p>
+      </div>
+
+      <!-- HUD -->
+      <img class="abs logo screen-only s-bronson s-lobby s-theater hud" src="assets/logo.svg" alt="Paramount">
+      <div class="abs countdown screen-only s-bronson s-lobby" data-component="countdown" aria-live="off">
+        <div class="countdown__label">TIME UNTIL SHOW</div>
+        <div class="countdown__time"><span id="cd-m">08</span><span class="countdown__colon" aria-hidden="true"><i></i><i></i></span><span id="cd-s">39</span></div>
+      </div>
+
+      <button class="icon-btn btn-settings screen-only s-bronson s-lobby" id="btn-settings" data-component="button-settings" aria-pressed="false" aria-label="Settings"
+        data-on="assets/settings-on.svg" data-off="assets/settings-off.svg"><img src="assets/settings-off.svg" alt=""></button>
+      <button class="icon-btn btn-helpdesk screen-only s-bronson s-lobby" id="btn-helpdesk" data-component="button-help-desk" aria-pressed="false" aria-label="Help desk"
+        data-on="assets/helpdesk-on.svg" data-off="assets/helpdesk-off.svg"><img src="assets/helpdesk-off.svg" alt=""></button>
+      <button class="abs profile screen-only s-bronson s-lobby" id="btn-profile" aria-label="Your profile and camera"><img src="assets/profile-icon.svg" alt=""></button>
+      <button class="icon-btn btn-qa screen-only s-theater" id="btn-qa" data-component="button-qa" aria-label="Open Q&amp;A" hidden>QA</button>
+
+      <button class="icon-btn btn-help screen-only s-bronson s-lobby s-theater" id="btn-help" data-component="icon-help" aria-pressed="false" aria-label="Controls overview"
+        data-on="assets/help-on.svg" data-off="assets/help-off.svg"><img src="assets/help-off.svg" alt=""></button>
+      <button class="icon-btn btn-env screen-only s-bronson s-lobby s-theater" id="btn-env" data-component="button-environments" aria-pressed="false" aria-label="Change location"
+        data-on="assets/env-on.svg" data-off="assets/env-off.svg"><img src="assets/env-off.svg" alt=""></button>
+
+      <div class="abs dc screen-only s-bronson s-lobby" id="dc" data-component="direction-controller" role="button" tabindex="0" aria-label="Direction controller: hold and drag, or use arrow keys to move">
+        <img class="dc-default" src="assets/dc-default.svg" alt="">
+        <img class="dc-press" src="assets/dc-press.svg" alt="">
+      </div>
+
+      <div class="menu-bar screen-only s-bronson s-lobby s-theater flex" data-component="menu-comms">
+        <button class="toggle t-mic" id="t-mic" aria-pressed="false" aria-label="Microphone" data-on="assets/mic-on.svg" data-off="assets/mic-off.svg"><img src="assets/mic-off.svg" alt=""></button>
+        <button class="toggle t-video screen-only s-theater" id="t-video" aria-pressed="false" aria-label="Camera" data-on="assets/video-on.svg" data-off="assets/video-off.svg"><img src="assets/video-off.svg" alt=""></button>
+        <button class="toggle t-chat screen-only s-bronson s-lobby" id="t-chat" aria-pressed="false" aria-label="Chat" data-on="assets/chat-on.svg" data-off="assets/chat-off.svg"><img src="assets/chat-off.svg" alt=""></button>
+        <button class="toggle t-emoji" id="t-emoji" aria-pressed="false" aria-label="Reactions" data-on="assets/emoji-on.svg" data-off="assets/emoji-off.svg"><img src="assets/emoji-off.svg" alt=""></button>
+      </div>
+
+      <!-- Panels -->
+      <nav class="panel env-panel" id="p-env" data-component="panel-environments" aria-label="Locations" hidden>
+        <button class="menu-item" data-go="bronson">Bronson</button>
+        <button class="menu-item" data-go="lobby">Lobby</button>
+        <button class="menu-item" data-go="theater">Theater</button>
+      </nav>
+
+      <section class="panel controls" id="p-controls" data-component="controls-overview" aria-label="Controls overview" hidden>
+        <div class="controls__header">CONTROLS OVERVIEW</div>
+        <div class="controls__slide" data-slide="0">
+          <h3>Moving</h3>
+          <p>Use the arrow keys on your keyboard to move forward, backward, left and right.</p>
+          <div class="controls__gfx"><img src="assets/co-keys.svg" alt="Arrow keys"></div>
+        </div>
+        <div class="controls__slide" data-slide="1" hidden>
+          <h3>Looking</h3>
+          <p>Click and drag anywhere within the environment to look around.</p>
+          <div class="controls__gfx hand"><img src="assets/co-hand.svg" alt="Drag gesture"></div>
+        </div>
+        <div class="dots" role="tablist" aria-label="Controls pages">
+          <button role="tab" aria-current="true" aria-label="Moving" data-dot="0"></button>
+          <button role="tab" aria-current="false" aria-label="Looking" data-dot="1"></button>
+        </div>
+      </section>
+
+      <section class="panel settings" id="p-settings" data-component="panel-settings" aria-label="Settings" hidden>
+        <div class="settings__header">
+          <div class="tabs" role="tablist">
+            <button class="tab" role="tab" aria-selected="true" data-tab="settings">Settings</button>
+            <button class="tab" role="tab" aria-selected="false" data-tab="camera">Camera &amp; Mic</button>
+          </div>
+          <button class="close-btn" data-close="settings" aria-label="Close settings"><img src="assets/close-settings.svg" alt=""></button>
+        </div>
+        <div class="settings__body" data-pane="settings">
+          <div class="row">
+            <span class="row__label">Adjust quality</span>
+            <div class="seg seg--quality" role="radiogroup" aria-label="Stream quality" data-component="radio-buttons" id="seg-quality">
+              <button role="radio" aria-checked="true" data-val="Low">L</button>
+              <button role="radio" aria-checked="false" data-val="Medium">M</button>
+              <button role="radio" aria-checked="false" data-val="High">H</button>
+            </div>
+          </div>
+          <div class="row">
+            <span class="row__label">Perspective</span>
+            <div class="seg seg--persp" role="radiogroup" aria-label="Perspective" data-component="button-perspective" id="seg-persp">
+              <button role="radio" aria-checked="false" data-val="1st">1st</button>
+              <button role="radio" aria-checked="true" data-val="3rd">3rd</button>
+            </div>
+          </div>
+          <div class="dropdown" data-component="dropdown" data-key="language">
+            <button class="dropdown__btn" aria-expanded="false"><span>Languages<small>English</small></span><img src="assets/chevron.svg" alt=""></button>
+            <div class="dropdown__rule"></div>
+            <div class="dropdown__list" role="listbox" hidden>
+              <button class="menu-item" role="option" aria-current="true">English</button>
+              <button class="menu-item" role="option">Español</button>
+              <button class="menu-item" role="option">Français</button>
+              <button class="menu-item" role="option">Deutsch</button>
+              <button class="menu-item" role="option">Português</button>
+            </div>
+          </div>
+          <div class="links"><a href="https://www.paramount.com/privacy" target="_blank" rel="noopener">Privacy policy</a><a href="https://www.paramount.com/terms-of-use" target="_blank" rel="noopener">Terms of use</a></div>
+        </div>
+        <div class="settings__body" data-pane="camera" hidden>
+          <div class="cam">
+            <div class="cam__subject" id="cam-subject"><img src="assets/cam-profile.svg" alt="Camera preview"><span class="live" id="cam-live">CAMERA OFF</span></div>
+            <div class="dropdown" data-component="dropdown" data-key="camera">
+              <button class="dropdown__btn" aria-expanded="false"><span>Choose camera<small>FaceTime HD Camera</small></span><img src="assets/chevron.svg" alt=""></button>
+              <div class="dropdown__rule"></div>
+              <div class="dropdown__list" role="listbox" hidden>
+                <button class="menu-item" role="option" aria-current="true">FaceTime HD Camera</button>
+                <button class="menu-item" role="option">Logitech C920</button>
+                <button class="menu-item" role="option">OBS Virtual Camera</button>
+              </div>
+            </div>
+            <div class="levels" id="levels" aria-label="Microphone level"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="dropdown" data-component="dropdown" data-key="mic">
+              <button class="dropdown__btn" aria-expanded="false"><span>Choose mic<small>MacBook Pro Microphone</small></span><img src="assets/chevron.svg" alt=""></button>
+              <div class="dropdown__rule"></div>
+              <div class="dropdown__list" role="listbox" hidden>
+                <button class="menu-item" role="option" aria-current="true">MacBook Pro Microphone</button>
+                <button class="menu-item" role="option">AirPods Pro</button>
+                <button class="menu-item" role="option">Shure MV7</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel helpdesk" id="p-helpdesk" data-component="panel-help-desk" aria-label="Help desk" hidden>
+        <div class="helpdesk__header">HELP DESK<button class="close-btn" data-close="helpdesk" aria-label="Close help desk"><img src="assets/close.svg" alt=""></button></div>
+        <form id="hd-form" novalidate style="display:contents">
+          <label class="form-entry" data-component="form-entry">
+            <span class="form-entry__label"><span>NAME</span></span>
+            <input id="hd-name" aria-label="Name">
+          </label>
+          <label class="form-entry" data-component="form-entry">
+            <span class="form-entry__label"><span>TOPIC</span></span>
+            <input id="hd-topic" aria-label="Topic">
+          </label>
+          <div class="field" data-component="field"><textarea id="hd-msg" placeholder="Describe what you need help with" aria-label="Message"></textarea></div>
+          <div class="actions">
+            <button type="button" class="btn-attach" id="hd-attach" aria-label="Attach a file"><img src="assets/icon-attach.svg" alt=""></button>
+            <input type="file" id="hd-file" hidden>
+            <button type="submit" class="btn-outline" style="width:190px" data-component="button-outline">Send</button>
+          </div>
+          <div class="attach-name" id="hd-file-name"></div>
+        </form>
+        <div class="sent" id="hd-sent" hidden>
+          <h4>Request sent</h4>
+          <p>A host will reply in your chat within a few minutes.</p>
+          <button class="btn-outline" style="width:190px" id="hd-again">New request</button>
+        </div>
+      </section>
+
+      <section class="panel chat" id="p-chat" data-component="panel-chat" aria-label="Chat" hidden>
+        <div class="chat__top">
+          <button class="chat__room" id="chat-room" aria-label="Switch room"><img src="assets/arrow-prev.svg" alt=""><span id="chat-room-name">CHAT GROUP XYZ</span></button>
+          <button class="close-btn" data-close="chat" aria-label="Close chat"><img src="assets/close.svg" alt=""></button>
+        </div>
+        <div class="chat__messages" id="chat-list" aria-live="polite"></div>
+        <div class="chat__write">
+          <form id="chat-form"><input id="chat-input" placeholder="WRITE A MESSAGE" autocomplete="off" aria-label="Write a message"><button type="submit">SEND</button></form>
+          <div class="rule"></div>
+        </div>
+        <div class="chat__actions">
+          <button id="chat-goto"><img src="assets/icon-goto.svg" alt="">Go to</button>
+          <button id="chat-chat"><img src="assets/icon-chat.svg" alt="">Chat</button>
+          <button id="chat-call"><img src="assets/icon-call.svg" alt="">Call</button>
+        </div>
+      </section>
+
+      <div class="panel emoji-set" id="p-emoji" data-component="emoji-set" role="toolbar" aria-label="Reactions" hidden>
+        <button data-emoji="heart" aria-label="Heart"><img src="assets/emoji-heart.svg" alt=""></button>
+        <button data-emoji="up" aria-label="Thumbs up"><img src="assets/emoji-up.svg" alt=""></button>
+        <button data-emoji="down" aria-label="Thumbs down"><img src="assets/emoji-down.svg" alt=""></button>
+        <button data-emoji="smile" aria-label="Smile"><img src="assets/emoji-smile.svg" alt=""></button>
+        <button data-emoji="clap" aria-label="Clap"><img src="assets/emoji-clap.svg" alt=""></button>
+        <button data-emoji="fire" aria-label="Fire"><img src="assets/emoji-fire.svg" alt=""></button>
+      </div>
+
+      <section class="panel qa" id="p-qa" data-component="panel-qa" aria-label="Q&amp;A" hidden>
+        <div class="qa__header"><h2>Q&amp;A</h2><button class="close-btn" data-close="qa" aria-label="Close Q&amp;A"><img src="assets/close-qa.svg" alt=""></button></div>
+        <div class="qa-entry" data-component="entry-field-qa"><textarea id="qa-text" placeholder="Type your question here." aria-label="Your question"></textarea></div>
+        <div role="radiogroup" aria-label="How your question is asked" style="display:flex;flex-direction:column;gap:16px">
+          <button class="opt" role="radio" aria-checked="false" data-component="opt-in"><span class="opt__dot"></span><span>I would like to appear on stage if my question is chosen.*</span></button>
+          <button class="opt" role="radio" aria-checked="false" data-component="opt-in"><span class="opt__dot"></span><span>I prefer the moderator ask my question on my behalf.</span></button>
+        </div>
+        <button class="btn-outline" id="qa-submit" data-component="button-outline">Submit</button>
+        <div id="qa-sent-list" style="display:flex;flex-direction:column;gap:8px"></div>
+        <p class="legal">* By selecting to appear on camera and clicking submit, I acknowledge that: I may be recorded; and I have read and agree to the Terms of Use and acknowledge the data collection and usage practices outlined in the Privacy Policy and any agreement specific to this event.</p>
+      </section>
+
+      <section class="panel prompt" id="p-prompt" data-component="prompt" role="dialog" aria-modal="false" aria-labelledby="prompt-title" hidden>
+        <h2 id="prompt-title">Messaging sample</h2>
+        <p id="prompt-text"></p>
+        <div class="actions-row">
+          <button class="btn-outline" id="prompt-a">Label</button>
+          <button class="btn-outline is-hover" id="prompt-b">Label</button>
+        </div>
+        <button class="close-btn" data-close="prompt" aria-label="Close"><img src="assets/close-qa.svg" alt=""></button>
+      </section>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      <div class="flash" id="flash"></div>
+      <div class="fade" id="fade"></div>
+    </div>
+  </div>
+  <nav class="switcher" aria-label="Jump to screen">
+    <button data-jump="onboarding">On-boarding</button>
+    <button data-jump="bronson">Bronson</button>
+    <button data-jump="lobby">Lobby</button>
+    <button data-jump="theater">Theaters</button>
+  </nav>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const stage = $('#stage'), viewport = $('#viewport');
+  const SCREENS = ['onboarding', 'bronson', 'lobby', 'theater'];
+  const state = { screen: 'onboarding', mic: false, video: false, pan: { x: 0, y: 0 }, zoom: 1, user: 'You', panel: null, firstPerson: false };
+
+  /* ---------- proportional scaling (never larger than 1920×1080) ---------- */
+  function fit() {
+    const shell = $('.shell');
+    const cs = getComputedStyle(shell);
+    const availW = shell.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const availH = shell.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - $('.switcher').offsetHeight - 10;
+    const s = Math.min(1, availW / 1920, availH / 1080);
+    stage.style.transform = `scale(${s})`;
+    viewport.style.width = 1920 * s + 'px';
+    viewport.style.height = 1080 * s + 'px';
+  }
+  window.addEventListener('resize', fit); fit();
+
+  /* ---------- toast / flash ---------- */
+  let toastT;
+  function toast(msg) {
+    const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+  const flash = () => { const f = $('#flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); };
+
+  /* ---------- generic two-state icon toggle (component: Icon Button / BTN MIC etc.) ---------- */
+  function setToggle(btn, on) {
+    btn.setAttribute('aria-pressed', String(on));
+    btn.querySelector('img').src = on ? btn.dataset.on : btn.dataset.off;
+  }
+
+  /* ---------- panels ---------- */
+  const panels = {
+    settings: { el: $('#p-settings'), btn: $('#btn-settings'), group: 'top' },
+    helpdesk: { el: $('#p-helpdesk'), btn: $('#btn-helpdesk'), group: 'top' },
+    qa:       { el: $('#p-qa'), group: 'top' },
+    env:      { el: $('#p-env'), btn: $('#btn-env'), group: 'left' },
+    controls: { el: $('#p-controls'), btn: $('#btn-help'), group: 'left' },
+    chat:     { el: $('#p-chat'), btn: $('#t-chat'), group: 'right' },
+    emoji:    { el: $('#p-emoji'), btn: $('#t-emoji'), group: 'right' },
+    prompt:   { el: $('#p-prompt'), group: 'center' },
+  };
+  const isOpen = k => !panels[k].el.hidden;
+  function open(k) {
+    const p = panels[k];
+    Object.keys(panels).forEach(o => { if (o !== k && panels[o].group === p.group && isOpen(o)) close(o); });
+    p.el.hidden = false; p.el.classList.add('enter');
+    requestAnimationFrame(() => requestAnimationFrame(() => p.el.classList.remove('enter')));
+    if (p.btn) setToggle(p.btn, true);
+    if (k === 'qa') $('#btn-qa').hidden = true;
+    if (k === 'env') markEnv();
+  }
+  function close(k) {
+    const p = panels[k]; if (p.el.hidden) return;
+    p.el.hidden = true;
+    if (p.btn) setToggle(p.btn, false);
+    if (k === 'qa') $('#btn-qa').hidden = false;
+    if (k === 'prompt') $('#hotspot').classList.remove('is-selected');
+    if (k === 'settings') $$('.dropdown__list', p.el).forEach(l => collapse(l.parentElement));
+  }
+  const toggle = k => isOpen(k) ? close(k) : open(k);
+  function closeAll() { Object.keys(panels).forEach(close); }
+
+  $('#btn-settings').onclick = () => toggle('settings');
+  $('#btn-helpdesk').onclick = () => toggle('helpdesk');
+  $('#btn-env').onclick = () => toggle('env');
+  $('#btn-help').onclick = () => toggle('controls');
+  $('#t-chat').onclick = () => toggle('chat');
+  $('#t-emoji').onclick = () => toggle('emoji');
+  $('#btn-qa').onclick = () => open('qa');
+  $('#btn-profile').onclick = () => { open('settings'); selectTab('camera'); };
+  $$('[data-close]').forEach(b => b.onclick = () => close(b.dataset.close));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { ['prompt', 'emoji', 'env', 'controls'].forEach(close); $$('.dropdown__list').forEach(l => collapse(l.parentElement)); }
+  });
+
+  /* ---------- screens ---------- */
+  function markEnv() { $$('#p-env [data-go]').forEach(b => b.setAttribute('aria-current', String(b.dataset.go === state.screen))); }
+  function show(screen, { instant = false } = {}) {
+    if (!SCREENS.includes(screen)) screen = 'onboarding';
+    const apply = () => {
+      state.screen = screen;
+      stage.dataset.screen = screen;
+      $('#scene').hidden = screen === 'onboarding';
+      closeAll();
+      if (screen === 'theater') { open('qa'); }
+      state.pan = { x: 0, y: 0 }; state.zoom = 1; applyWorld();
+      $('#tooltip').classList.remove('is-hidden');
+      markEnv();
+      $$('.switcher [data-jump]').forEach(b => b.setAttribute('aria-current', String(b.dataset.jump === screen)));
+      try { history.replaceState(null, '', '#' + screen); } catch (e) {}
+    };
+    if (instant) return apply();
+    const f = $('#fade'); f.classList.add('on');
+    setTimeout(() => { apply(); f.classList.remove('on'); }, 350);
+  }
+  $$('[data-jump]').forEach(b => b.onclick = () => show(b.dataset.jump));
+  $$('#p-env [data-go]').forEach(b => b.onclick = () => {
+    if (b.dataset.go === state.screen) { close('env'); return; }
+    show(b.dataset.go);
+  });
+
+  /* ---------- On-boarding: form entries + sign in ---------- */
+  function wireEntry(label) {
+    const input = label.querySelector('input');
+    const sync = () => label.classList.toggle('is-active', document.activeElement === input || input.value.trim() !== '');
+    input.addEventListener('focus', sync); input.addEventListener('blur', sync);
+    input.addEventListener('input', () => { label.classList.remove('is-error'); sync(); });
+  }
+  $$('.form-entry').forEach(wireEntry);
+  $('#signin').addEventListener('submit', e => {
+    e.preventDefault();
+    const u = $('#f-user'), m = $('#f-email');
+    const bad = [];
+    if (!u.value.trim()) bad.push(u);
+    if (!/^\S+@\S+\.\S+$/.test(m.value.trim())) bad.push(m);
+    bad.forEach(i => i.closest('.form-entry').classList.add('is-error'));
+    if (bad.length) { $('#signin-hint').textContent = bad.includes(u) ? 'Enter a username to continue.' : 'Enter a valid email address, like name@studio.com.'; bad[0].focus(); return; }
+    $('#signin-hint').textContent = '';
+    state.user = u.value.trim();
+    show('bronson');
+    setTimeout(() => toast(`Welcome to Bronson Plaza, ${state.user}`), 500);
+  });
+  $('#forgot').onclick = () => prompt({
+    title: 'Reset password', text: 'We’ll email a reset link to the address on your invite. Check your inbox, then come back to sign in.',
+    a: ['Cancel', () => close('prompt')], b: ['Send link', () => { close('prompt'); toast('Reset link sent'); }], centered: true
+  });
+
+  /* ---------- Prompt (Messaging sample) ---------- */
+  function prompt({ title, text, a, b, centered = false }) {
+    $('#prompt-title').textContent = title; $('#prompt-text').textContent = text;
+    $('#prompt-a').textContent = a[0]; $('#prompt-a').onclick = a[1];
+    $('#prompt-b').textContent = b[0]; $('#prompt-b').onclick = b[1];
+    $('#p-prompt').classList.toggle('centered', centered);
+    open('prompt');
+  }
+
+  /* ---------- Countdown ---------- */
+  let remaining = 8 * 60 + 39;
+  setInterval(() => {
+    if (remaining <= 0) return;
+    remaining--;
+    $('#cd-m').textContent = String(Math.floor(remaining / 60)).padStart(2, '0');
+    $('#cd-s').textContent = String(remaining % 60).padStart(2, '0');
+    if (remaining === 60 && state.screen !== 'theater' && state.screen !== 'onboarding') toast('The show starts in one minute');
+    if (remaining === 0 && state.screen !== 'onboarding' && state.screen !== 'theater') prompt({
+      title: 'The show is starting', text: 'Take your seat in the theater for the exclusive “Rumble” sneak peek and live cast Q&A.',
+      a: ['Stay here', () => close('prompt')], b: ['Go to theater', () => show('theater')], centered: true
+    });
+  }, 1000);
+
+  /* ---------- Look around (drag) + move (arrow keys / controller) ---------- */
+  const world = $('#world'), scene = $('#scene');
+  function applyWorld() {
+    const z = state.zoom, mx = Math.max(0, (1920 * (z * 1.08 - 1)) / 2 - 2), my = Math.max(0, (1080 * (z * 1.08 - 1)) / 2 - 2);
+    state.pan.x = Math.max(-mx, Math.min(mx, state.pan.x));
+    state.pan.y = Math.max(-my, Math.min(my, state.pan.y));
+    world.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${z * 1.08})`;
+  }
+  applyWorld();
+  const stageScale = () => stage.getBoundingClientRect().width / 1920;
+  let drag = null;
+  scene.addEventListener('pointerdown', e => {
+    if (e.target.closest('button')) return;
+    drag = { x: e.clientX, y: e.clientY, px: state.pan.x, py: state.pan.y };
+    scene.classList.add('dragging'); scene.setPointerCapture(e.pointerId);
+    $('#tooltip').classList.add('is-hidden');
+    ['env', 'controls', 'emoji'].forEach(close);
+  });
+  scene.addEventListener('pointermove', e => {
+    if (!drag) return; const s = stageScale();
+    state.pan.x = drag.px + (e.clientX - drag.x) / s * .5;
+    state.pan.y = drag.py + (e.clientY - drag.y) / s * .35;
+    applyWorld();
+  });
+  const endDrag = () => { drag = null; scene.classList.remove('dragging'); };
+  scene.addEventListener('pointerup', endDrag); scene.addEventListener('pointercancel', endDrag);
+
+  const dc = $('#dc');
+  function move(dx, dy) {
+    if (state.screen !== 'bronson' && state.screen !== 'lobby') return;
+    state.zoom = Math.max(1, Math.min(1.35, state.zoom + dy * .05));
+    state.pan.x -= dx * 40;
+    applyWorld();
+    $('#tooltip').classList.add('is-hidden');
+  }
+  let dcDrag = null, dcTimer = null;
+  dc.addEventListener('pointerdown', e => {
+    dc.classList.add('is-pressed'); dc.setPointerCapture(e.pointerId);
+    const r = dc.getBoundingClientRect(); dcDrag = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, dx: 0, dy: 0 };
+    clearInterval(dcTimer); dcTimer = setInterval(() => { if (dcDrag) move(dcDrag.dx, dcDrag.dy); }, 60);
+  });
+  dc.addEventListener('pointermove', e => {
+    if (!dcDrag) return; const s = stageScale();
+    dcDrag.dx = Math.max(-1, Math.min(1, (e.clientX - dcDrag.cx) / s / 45)) * .35;
+    dcDrag.dy = Math.max(-1, Math.min(1, -(e.clientY - dcDrag.cy) / s / 45)) * .35;
+  });
+  const dcEnd = () => { dc.classList.remove('is-pressed'); dcDrag = null; clearInterval(dcTimer); };
+  dc.addEventListener('pointerup', dcEnd); dc.addEventListener('pointercancel', dcEnd);
+
+  const held = new Set();
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input, textarea')) return;
+    const map = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+    if (!map[e.key] || (state.screen !== 'bronson' && state.screen !== 'lobby')) return;
+    e.preventDefault(); held.add(e.key); dc.classList.add('is-pressed'); move(...map[e.key]);
+  });
+  document.addEventListener('keyup', e => { held.delete(e.key); if (!held.size && !dcDrag) dc.classList.remove('is-pressed'); });
+
+  /* ---------- Comms: mic / video ---------- */
+  $('#t-mic').onclick = () => { state.mic = !state.mic; setToggle($('#t-mic'), state.mic); toast(state.mic ? 'Microphone on' : 'Microphone muted'); };
+  $('#t-video').onclick = () => { state.video = !state.video; setToggle($('#t-video'), state.video); syncCam(); toast(state.video ? 'Camera on' : 'Camera off'); };
+  function syncCam() { $('#cam-subject').classList.toggle('is-live', state.video); $('#cam-live').textContent = state.video ? 'LIVE' : 'CAMERA OFF'; }
+  const bars = $$('#levels i');
+  setInterval(() => {
+    const lvl = state.mic ? Math.round(3 + Math.random() * 5) : 0;
+    bars.forEach((b, i) => b.classList.toggle('on', i < lvl));
+  }, 140);
+
+  /* ---------- Emoji reactions ---------- */
+  $$('#p-emoji [data-emoji]').forEach(b => b.onclick = () => {
+    const src = b.querySelector('img').src;
+    for (let i = 0; i < 3; i++) setTimeout(() => {
+      const f = document.createElement('div'); f.className = 'floater';
+      const fromAvatar = false;
+      f.style.left = (fromAvatar ? 1205 : 1800) + (Math.random() * 40 - 20) + 'px';
+      f.style.top = (fromAvatar ? 560 : 900) + 'px';
+      f.style.setProperty('--dx', (Math.random() * 80 - 40) + 'px');
+      f.innerHTML = `<img src="${src}" alt="">`;
+      stage.appendChild(f); setTimeout(() => f.remove(), 2300);
+    }, i * 140);
+  });
+
+  /* ---------- Controls overview carousel ---------- */
+  function slide(n) {
+    $$('#p-controls [data-slide]').forEach(s => s.hidden = Number(s.dataset.slide) !== n);
+    $$('#p-controls [data-dot]').forEach(d => d.setAttribute('aria-current', String(Number(d.dataset.dot) === n)));
+  }
+  $$('#p-controls [data-dot]').forEach(d => d.onclick = () => slide(Number(d.dataset.dot)));
+  let coTimer = setInterval(() => { if (isOpen('controls')) slide($('#p-controls [data-slide="0"]').hidden ? 0 : 1); }, 4500);
+
+  /* ---------- Settings: tabs, radio groups, dropdowns ---------- */
+  function selectTab(t) {
+    $$('#p-settings [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+    $$('#p-settings [data-pane]').forEach(p => p.hidden = p.dataset.pane !== t);
+  }
+  $$('#p-settings [data-tab]').forEach(b => b.onclick = () => selectTab(b.dataset.tab));
+  function radioGroup(group, onChange) {
+    const opts = $$('[role="radio"]', group);
+    opts.forEach(o => o.addEventListener('click', () => {
+      opts.forEach(x => x.setAttribute('aria-checked', String(x === o)));
+      onChange && onChange(o);
+    }));
+  }
+  radioGroup($('#seg-quality'), o => toast(`Stream quality: ${o.dataset.val}`));
+  radioGroup($('#seg-persp'), o => {
+    state.firstPerson = o.dataset.val === '1st';
+    toast(state.firstPerson ? 'First-person view' : 'Third-person view');
+  });
+  function collapse(dd) { const btn = $('.dropdown__btn', dd), list = $('.dropdown__list', dd); btn.setAttribute('aria-expanded', 'false'); list.hidden = true; }
+  $$('[data-component="dropdown"]').forEach(dd => {
+    const btn = $('.dropdown__btn', dd), list = $('.dropdown__list', dd);
+    btn.onclick = () => { const was = !list.hidden; $$('.dropdown__list').forEach(l => collapse(l.parentElement)); if (!was) { list.hidden = false; btn.setAttribute('aria-expanded', 'true'); } };
+    $$('.menu-item', list).forEach(item => item.onclick = () => {
+      $$('.menu-item', list).forEach(x => x.setAttribute('aria-current', String(x === item)));
+      $('small', btn).textContent = item.textContent; collapse(dd);
+    });
+  });
+
+  /* ---------- Help desk ---------- */
+  $('#hd-attach').onclick = () => $('#hd-file').click();
+  $('#hd-file').onchange = e => {
+    const f = e.target.files[0]; $('#hd-file-name').textContent = f ? `Attached: ${f.name}` : '';
+    $('#hd-attach .badge')?.remove();
+    if (f) $('#hd-attach').insertAdjacentHTML('beforeend', '<span class="badge">1</span>');
+  };
+  $('#hd-form').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!$('#hd-msg').value.trim()) { $('#hd-msg').focus(); $('#hd-msg').placeholder = 'Add a short message first'; return; }
+    $('#hd-form').hidden = true; $$('#hd-form > *').forEach(n => n.style.display = 'none'); $('#hd-sent').hidden = false;
+  });
+  $('#hd-again').onclick = () => {
+    $('#hd-form').reset(); $$('#hd-form .form-entry').forEach(l => l.classList.remove('is-active'));
+    $$('#hd-form > *').forEach(n => n.style.display = ''); $('#hd-form').hidden = false; $('#hd-sent').hidden = true;
+    $('#hd-file-name').textContent = ''; $('#hd-attach .badge')?.remove();
+  };
+
+  /* ---------- Chat ---------- */
+  const rooms = {
+    'CHAT GROUP XYZ': [
+      { who: 'You', when: '6 minutes', text: 'Has anyone found the photo spot yet?', out: true },
+      { who: 'Adria Vossen', when: '5 minutes', text: 'It’s in the lobby, right next to Rumble. Look for the camera icon.' },
+      { who: 'Marius Ciocirlan', when: '4 minutes', text: 'Grab a picture before the show starts, the line gets long.' },
+      { who: 'You', when: '3 minutes', text: 'On my way over now.', out: true },
+      { who: 'Adria Vossen', when: '2 minutes', text: 'See you in the theater for the Q&A after!' },
+    ],
+    'EVERYONE': [
+      { who: 'Host', when: '12 minutes', text: 'Welcome to the Paramount Virtual Showcase! The screening starts when the countdown hits zero.' },
+      { who: 'Jordan Ellis', when: '7 minutes', text: 'Bronson Plaza looks incredible at this time of day.' },
+      { who: 'Priya Raman', when: '3 minutes', text: 'Does anyone know if the cast is joining the Q&A live?' },
+    ],
+  };
+  let room = 'CHAT GROUP XYZ';
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function msgHTML(m) {
+    return `<div class="msg ${m.out ? 'msg--out' : ''}" data-component="${m.out ? 'message-outgoing' : 'message-incoming'}">
+      <div class="msg__meta"><span class="msg__name">${esc(m.out ? 'You' : m.who)}</span><span class="msg__when">${esc(m.when)}</span></div>
+      <div class="msg__bubble">${esc(m.text)}</div></div>`;
+  }
+  function renderChat() {
+    $('#chat-room-name').textContent = room;
+    const list = $('#chat-list'); list.innerHTML = rooms[room].map(msgHTML).join('');
+    list.scrollTop = list.scrollHeight;
+  }
+  renderChat();
+  $('#chat-room').onclick = () => { room = room === 'EVERYONE' ? 'CHAT GROUP XYZ' : 'EVERYONE'; renderChat(); };
+  $('#chat-chat').onclick = $('#chat-room').onclick;
+  $('#chat-goto').onclick = () => { close('chat'); open('env'); };
+  $('#chat-call').onclick = () => toast(room === 'EVERYONE' ? 'Calling the host desk…' : 'Calling Chat Group XYZ…');
+  const replies = ['Love that!', 'Same here, can’t wait for the screening.', 'Ha, agreed.', 'See you at the Q&A!', 'Good call.'];
+  $('#chat-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = $('#chat-input').value.trim(); if (!v) return;
+    rooms[room].push({ who: 'You', when: 'Just now', text: v, out: true });
+    $('#chat-input').value = ''; renderChat();
+    const list = $('#chat-list');
+    setTimeout(() => {
+      list.insertAdjacentHTML('beforeend', `<div class="msg msg--typing"><div class="msg__meta"><span class="msg__name">Adria Vossen</span><span class="msg__when">typing</span></div><div class="msg__bubble"><i></i><i></i><i></i></div></div>`);
+      list.scrollTop = list.scrollHeight;
+    }, 500);
+    setTimeout(() => {
+      rooms[room].push({ who: room === 'EVERYONE' ? 'Jordan Ellis' : 'Adria Vossen', when: 'Just now', text: replies[Math.floor(Math.random() * replies.length)] });
+      renderChat();
+    }, 1900);
+  });
+
+  /* ---------- Lobby: hotspot + digital takeaway ---------- */
+  $('#hotspot').onclick = () => {
+    $('#hotspot').classList.add('is-selected');
+    prompt({
+      title: 'Meet Rumble', text: 'Rumble the monster is the star of our upcoming film. Snap a photo with him, or head to the theater for the sneak peek.',
+      a: ['Take a photo', () => { close('prompt'); flash(); toast('Photo saved to your digital takeaways'); }],
+      b: ['Go to theater', () => show('theater')],
+    });
+  };
+  $('#takeaway').onclick = () => { flash(); toast('Photo saved to your digital takeaways'); };
+
+  /* ---------- Theater: Q&A ---------- */
+  radioGroup($('#p-qa [role="radiogroup"]'));
+  $('#qa-submit').onclick = () => {
+    const t = $('#qa-text');
+    if (!t.value.trim()) { t.focus(); toast('Type a question first'); return; }
+    const onStage = $('#p-qa .opt[aria-checked="true"]')?.textContent.includes('appear on stage');
+    $('#qa-sent-list').innerHTML = `<div class="qa-sent"><b>Question submitted${onStage ? ' · on stage' : ''}</b>${esc(t.value.trim())}</div>`;
+    t.value = '';
+    toast('Your question is in the moderator queue');
+  };
+
+  /* ---------- boot ---------- */
+  let initial = (location.hash || '').slice(1);
+  show(SCREENS.includes(initial) ? initial : 'onboarding', { instant: true });
+})();
+</script>
+
+</body>
+</html>
